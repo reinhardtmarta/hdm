@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "hdm"
+name = "highdimensionsmap"
 version = "0.1.0"
 description = "High Dimensions Map: lightweight non-linear geometric scanning and phase-orbit indexing"
 readme = "README.md"
@@ -11,6 +11,8 @@ license = { text = "Apache-2.0" }
 authors = [{ name = "Marta Reinhardt" }]
 keywords = ["geometry", "high-dimensions", "embeddings", "manifold-learning", "kinematics", "spectral"]
 dependencies = [
-    "numpy>=1.20.0"
+    "numpy>=1.20.0",
+    "fastapi>=0.110.0",
+    "uvicorn>=0.30.0"
 ]
 requires-python = ">=3.8"

@@ -9,7 +9,87 @@ Requires-Python: >=3.8
 Description-Content-Type: text/markdown
 License-File: LICENSE
 Requires-Dist: numpy>=1.20.0
+Requires-Dist: fastapi>=0.110.0
+Requires-Dist: uvicorn>=0.30.0
 Dynamic: license-file
 
-# hdm
-High Dimensions map
+# HDM
+
+High Dimensions Map is a lightweight Python library for generating and analyzing high-dimensional data with spectral signatures and similarity queries.
+
+It is designed to work like a regular scientific Python package: import it, create a scanner, generate data, transform vectors, and run nearest-neighbor queries directly from Python, notebooks, or Colab.
+
+## Installation
+
+```bash
+pip install git+https://github.com/reinhardtmarta/hdm.git
+```
+
+Or from a local checkout:
+
+```bash
+cd hdm
+pip install -e .
+```
+
+## Quick start
+
+```python
+from hdm import HDMScanner, MotionNoiseTracker
+
+scanner = HDMScanner(input_dim=128, latent_modes=32, steps=48, seed=42)
+
+dataset = scanner.generate_dataset(20)
+print(dataset.shape)
+
+signatures = scanner.transform(dataset)
+print(signatures.shape)
+
+tracker = MotionNoiseTracker(scanner)
+metrics = tracker.track(dataset)
+print(metrics["velocity"][:5])
+```
+
+## API overview
+
+### HDMScanner
+
+```python
+scanner = HDMScanner(input_dim=128, latent_modes=32, steps=48, seed=42)
+```
+
+Methods:
+
+- `generate_dataset(n_samples=1, noise=0.05, drift=0.1)`
+- `transform(X)`
+- `query(dataset_signatures, query_vector, k=5)`
+
+### MotionNoiseTracker
+
+```python
+tracker = MotionNoiseTracker(scanner)
+result = tracker.track(trajectory)
+```
+
+Returns a dictionary with:
+
+- `signatures`
+- `velocity`
+- `noise`
+
+## Colab usage
+
+```python
+!pip install git+https://github.com/reinhardtmarta/hdm.git
+
+from hdm import HDMScanner
+
+scanner = HDMScanner(input_dim=64, latent_modes=16, steps=32, seed=7)
+dataset = scanner.generate_dataset(10)
+signatures = scanner.transform(dataset)
+print(signatures.shape)
+```
+
+## Notes
+
+This package is designed as a Python library first. The FastAPI app is optional and can be used as an auxiliary interface, but the main workflow is direct Python use.

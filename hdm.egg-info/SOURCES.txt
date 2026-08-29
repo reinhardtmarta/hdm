@@ -2,6 +2,7 @@ LICENSE
 README.md
 pyproject.toml
 hdm/__init__.py
+hdm/api.py
 hdm/core.py
 hdm/kinematics.py
 hdm/scanner.py
@@ -11,3 +12,4 @@ hdm.egg-info/SOURCES.txt
 hdm.egg-info/dependency_links.txt
 hdm.egg-info/requires.txt
 hdm.egg-info/top_level.txt
+tests/test_api.py
