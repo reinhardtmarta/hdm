@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phase-orbit-scanner"
+version = "0.1.0"
+description = "Algoritmo leve de varredura topológica e rastreamento cinemático em altas dimensões"
+readme = "README.md"
+authors = [{ name = "Marta Reinhardt" }]
+dependencies = [
+    "numpy>=1.20.0"
+]
+requires-python = ">=3.8"
+
