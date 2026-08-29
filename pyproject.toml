@@ -3,13 +3,14 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "phase-orbit-scanner"
+name = "hdm"
 version = "0.1.0"
-description = "Algoritmo leve de varredura topológica e rastreamento cinemático em altas dimensões"
+description = "High Dimensions Map: lightweight non-linear geometric scanning and phase-orbit indexing"
 readme = "README.md"
+license = { text = "Apache-2.0" }
 authors = [{ name = "Marta Reinhardt" }]
+keywords = ["geometry", "high-dimensions", "embeddings", "manifold-learning", "kinematics", "spectral"]
 dependencies = [
     "numpy>=1.20.0"
 ]
 requires-python = ">=3.8"
-
