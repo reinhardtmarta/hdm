@@ -22,20 +22,20 @@ pip install -e .
 Quick start
 from highdimensionsmap import HDMScanner, MotionNoiseTracker
 
-# 1. Initialize scanner
+## 1. Initialize scanner
 scanner = HDMScanner(input_dim=128, latent_modes=32, steps=48, seed=42)
 
-# 2. Generate and transform dataset
+## 2. Generate and transform dataset
 dataset = scanner.generate_dataset(20)
 signatures = scanner.transform(dataset)
 print("Signatures shape:", signatures.shape)
 
-# 3. Query nearest neighbors
+## 3. Query nearest neighbors
 query_vec = dataset[0]
 nearest_indices, distances = scanner.query(signatures, query_vec, k=3)
 print("Nearest neighbor indices:", nearest_indices)
 
-# 4. Track motion and noise
+## 4. Track motion and noise
 tracker = MotionNoiseTracker(scanner)
 metrics = tracker.track(dataset)
 print("Velocity (first 5 steps):", metrics["velocity"][:5])
