@@ -1,5 +1,7 @@
 # HighDimensionsMap
 
+Analyze your black box!
+
 High Dimensions Map is a lightweight Python library for generating and analyzing high-dimensional data with spectral signatures, kinematic tracking, and similarity queries.
 
 It is designed to work like a regular scientific Python package: import it, create a scanner, generate data, transform vectors, and run nearest-neighbor queries directly from Python, notebooks, or Google Colab.
