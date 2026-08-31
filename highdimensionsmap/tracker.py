@@ -11,21 +11,30 @@ class MotionNoiseTracker:
         signatures = self.scanner.transform(trajectory_sequence)
         n_passos, n_features = signatures.shape
         
-        # Velocidade instantânea espectral
+        # 1. Velocidade instantânea espectral
         velocities = np.linalg.norm(np.diff(signatures, axis=0), axis=1)
         
-        # Filtro temporal 1D independente por canal
+        # 2. Suavização temporal sem distorção artificial de borda (mode='reflect')
         smoothed = np.zeros_like(signatures)
         pad = filter_window // 2
         for col in range(n_features):
-            padded = np.pad(signatures[:, col], pad, mode='edge')
+            # 'reflect' evita a falsa convergência nas pontas gerada por 'edge'
+            padded = np.pad(signatures[:, col], pad, mode='reflect')
             smoothed[:, col] = np.convolve(padded, np.ones(filter_window)/filter_window, mode='valid')
             
-        noise_levels = np.linalg.norm(signatures - smoothed, axis=1)
+        # 3. Resíduo pontual de ruído
+        raw_noise = np.linalg.norm(signatures - smoothed, axis=1)
+        
+        # 4. Correção de escala por grau de liberdade das bordas
+        # Ajusta o fator de variância esperada na convolução
+        correcao_borda = np.ones(n_passos)
+        correcao_borda[0] = np.sqrt(3.0 / 2.0)
+        correcao_borda[-1] = np.sqrt(3.0 / 2.0)
+        calibrated_noise = raw_noise * correcao_borda
         
         return {
             "signatures": signatures,
             "velocity": velocities,
-            "noise": noise_levels
+            "noise": calibrated_noise
         }
-      
+        
