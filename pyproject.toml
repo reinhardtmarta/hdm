@@ -13,7 +13,7 @@ keywords = ["geometry", "high-dimensions", "embeddings", "manifold-learning", "k
 dependencies = [
     "numpy>=1.20.0",
     "fastapi>=0.110.0",
-    "uvicorn>=0.30.0"
-    "scipy>=1.7.0"
+    "uvicorn>=0.30.0",
+    "scipy>=1.7.0",
 ]
 requires-python = ">=3.8"
