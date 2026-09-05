@@ -7,7 +7,7 @@ name = "highdimensionsmap"
 version = "0.2.0"
 description = "High Dimensions Map: lightweight non-linear geometric scanning and phase-orbit indexing"
 readme = "README.md"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
 authors = [{ name = "Marta Reinhardt" }]
 keywords = ["geometry", "high-dimensions", "embeddings", "manifold-learning", "kinematics", "spectral"]
 dependencies = [
