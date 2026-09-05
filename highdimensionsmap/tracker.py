@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.special import expit
 
 class RobustMotionTracker:
     """
@@ -11,10 +12,14 @@ class RobustMotionTracker:
 
     def _estimate_null_baseline(self, shape):
         """Gera a linha de base estatística para dados aleatórios equivalentes."""
+        # Usa um gerador com semente fixa (derivada da semente do scanner) para que
+        # a linha de base nula -- e portanto o resultado de track() -- seja
+        # reprodutível entre chamadas com a mesma entrada.
+        rng = np.random.default_rng(self.scanner.seed)
         null_noises = []
         for _ in range(self.n_null_samples):
             # Matriz nula aleatória com a mesma dimensão e energia
-            null_data = np.random.normal(0, 1, size=shape)
+            null_data = rng.normal(0, 1, size=shape)
             sigs = self.scanner.transform(null_data)
             
             # Tendência polinomial de grau 2 (elimina viés de borda)
@@ -49,6 +54,8 @@ class RobustMotionTracker:
         null_std = np.where(null_std == 0, 1e-6, null_std)
         
         # Métrica Formal: Excesso de Estrutura vs Ruído Branco
+        # Z negativo = resíduo MENOR que o esperado ao acaso = mais estrutura (bom).
+        # Z positivo = resíduo MAIOR que o esperado ao acaso = mais ruidoso que o acaso (ruim).
         excess_structure = (raw_noise - null_mean) / null_std
 
         return {
@@ -56,6 +63,11 @@ class RobustMotionTracker:
             "velocity": velocities,
             "raw_noise": raw_noise,
             "excess_structure_zscore": excess_structure,
-            "structural_coherence": np.exp(-np.abs(excess_structure)) # 0.0 (puro ruído) a 1.0 (sinal perfeitamente coerente)
+            # Antes: np.exp(-np.abs(excess_structure)) tratava z muito negativo (mais
+            # coerente que o acaso) da mesma forma que z muito positivo (mais ruidoso
+            # que o acaso), cancelando o sinal útil. Agora preserva o sinal do z-score:
+            # expit(-z) -> perto de 1.0 quando z é bem negativo (coerente),
+            #              perto de 0.0 quando z é bem positivo (ruidoso).
+            "structural_coherence": expit(-excess_structure)
         }
-        
+
