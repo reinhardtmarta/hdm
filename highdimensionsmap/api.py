@@ -28,22 +28,31 @@ def healthcheck():
 @app.post("/transform")
 def transform_endpoint(payload: TransformRequest):
     try:
-        values = np.asarray(payload.input, dtype=float)
+        values = np.asarray(payload.input, dtype=np.float64)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="'input' precisa ser numérico.") from exc
 
     if values.ndim not in (1, 2):
         raise HTTPException(status_code=400, detail="'input' deve ser um vetor ou uma matriz 2D.")
 
+    was_1d = values.ndim == 1
     signature = scanner.transform(values)
-    return {"signature": np.asarray(signature).tolist()}
+    sig_array = np.asarray(signature, dtype=np.float64)
+
+    # Garante que a estrutura dimensional da resposta corresponda à entrada
+    if was_1d and sig_array.ndim > 1:
+        sig_array = sig_array[0]
+    elif not was_1d and sig_array.ndim == 1:
+        sig_array = sig_array.reshape(1, -1)
+
+    return {"signature": sig_array.tolist()}
 
 
 @app.post("/query")
 def query_endpoint(payload: QueryRequest):
     try:
-        dataset = np.asarray(payload.dataset, dtype=float)
-        query = np.asarray(payload.query, dtype=float)
+        dataset = np.asarray(payload.dataset, dtype=np.float64)
+        query = np.asarray(payload.query, dtype=np.float64)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="'dataset' e 'query' precisam ser numéricos.") from exc
 
