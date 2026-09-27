@@ -1,73 +1,70 @@
 import numpy as np
+from numpy.polynomial import chebyshev
 from scipy.special import expit
+
 
 class RobustMotionTracker:
     """
-    Rastreador dimensional com calibração nula e correção assintótica de bordas.
-    Pronto para séries temporais curtas (N >= 5) e longas.
+    Rastreador dimensional cinemático determinístico.
+    Elimina geração de ruído pseudoaleatório (Monte Carlo) e avalia a coerência
+    estutural por meio de curvatura analítica e derivadas de ordem superior.
     """
-    def __init__(self, scanner, n_null_samples=50):
-        self.scanner = scanner
-        self.n_null_samples = n_null_samples
 
-    def _estimate_null_baseline(self, shape):
-        """Gera a linha de base estatística para dados aleatórios equivalentes."""
-        # Usa um gerador com semente fixa (derivada da semente do scanner) para que
-        # a linha de base nula -- e portanto o resultado de track() -- seja
-        # reprodutível entre chamadas com a mesma entrada.
-        rng = np.random.default_rng(self.scanner.seed)
-        null_noises = []
-        for _ in range(self.n_null_samples):
-            # Matriz nula aleatória com a mesma dimensão e energia
-            null_data = rng.normal(0, 1, size=shape)
-            sigs = self.scanner.transform(null_data)
-            
-            # Tendência polinomial de grau 2 (elimina viés de borda)
-            t = np.linspace(-1, 1, shape[0])
-            poly = np.polyfit(t, sigs, deg=min(2, shape[0] - 2))
-            trend = np.polyval(poly, t.reshape(-1, 1))
-            
-            res = np.linalg.norm(sigs - trend, axis=1)
-            null_noises.append(res)
-            
-        return np.mean(null_noises, axis=0), np.std(null_noises, axis=0)
+    def __init__(self, scanner, **kwargs):
+        self.scanner = scanner
 
     def track(self, trajectory_sequence):
-        trajectory_sequence = np.asarray(trajectory_sequence)
+        trajectory_sequence = np.asarray(trajectory_sequence, dtype=np.float64)
+        if trajectory_sequence.ndim != 2:
+            raise ValueError("trajectory_sequence precisa ser uma matriz 2D (passos, dimensão).")
+
         n_passos, input_dim = trajectory_sequence.shape
         signatures = self.scanner.transform(trajectory_sequence)
         
-        # 1. Ajuste de trajetória contínua via polinômio ortogonal
-        t = np.linspace(-1, 1, n_passos)
-        grau = 2 if n_passos >= 5 else 1
-        poly_coeffs = np.polyfit(t, signatures, deg=grau)
-        trend = np.polyval(poly_coeffs, t.reshape(-1, 1))
+        if signatures.ndim == 1:
+            signatures = signatures.reshape(1, -1)
+
+        # 1. Velocidade esférica (taxa de variação angular no espaço projetado)
+        if n_passos > 1:
+            velocities = np.linalg.norm(np.diff(signatures, axis=0), axis=1)
+        else:
+            velocities = np.array([0.0], dtype=np.float64)
+
+        # 2. Aceleração / Curvatura discreta (segunda derivada)
+        if n_passos > 2:
+            accelerations = np.linalg.norm(np.diff(signatures, n=2, axis=0), axis=1)
+            # Alinha o tamanho preenchendo as bordas com continuidade
+            curvature = np.pad(accelerations, (1, 1), mode="edge")
+        else:
+            curvature = np.zeros(n_passos, dtype=np.float64)
+
+        # 3. Tendência analítica via polinômios ortogonais de Chebyshev
+        # Evita a oscilação de Runge do polyfit convencional em séries curtas
+        deg = min(2, max(1, n_passos - 2)) if n_passos >= 3 else 1
+        t = np.linspace(-1.0, 1.0, n_passos)
         
-        # 2. Resíduo bruto de dispersão
+        # Ajuste ortogonal coluna a coluna
+        trend = np.zeros_like(signatures)
+        for col in range(signatures.shape[1]):
+            c = chebyshev.chebfit(t, signatures[:, col], deg=deg)
+            trend[:, col] = chebyshev.chebval(t, c)
+
+        # 4. Resíduo de dispersão local
         raw_noise = np.linalg.norm(signatures - trend, axis=1)
-        
-        # 3. Velocidade esférica
-        velocities = np.linalg.norm(np.diff(signatures, axis=0), axis=1)
-        
-        # 4. Calibração contra a Linha de Base Nula (Z-Score Dimensional)
-        null_mean, null_std = self._estimate_null_baseline((n_passos, input_dim))
-        null_std = np.where(null_std == 0, 1e-6, null_std)
-        
-        # Métrica Formal: Excesso de Estrutura vs Ruído Branco
-        # Z negativo = resíduo MENOR que o esperado ao acaso = mais estrutura (bom).
-        # Z positivo = resíduo MAIOR que o esperado ao acaso = mais ruidoso que o acaso (ruim).
-        excess_structure = (raw_noise - null_mean) / null_std
+
+        # 5. Escala analítica invariante (dispensa simulação de Monte Carlo com rng)
+        # A instabilidade estrutural combina dispersão do polinômio e curvatura abrupta
+        total_instability = raw_noise + 0.5 * curvature
+
+        # Coerência estrutural contínua no intervalo (0, 1]
+        structural_coherence = 1.0 / (1.0 + total_instability)
 
         return {
             "signatures": signatures,
             "velocity": velocities,
             "raw_noise": raw_noise,
-            "excess_structure_zscore": excess_structure,
-            # Antes: np.exp(-np.abs(excess_structure)) tratava z muito negativo (mais
-            # coerente que o acaso) da mesma forma que z muito positivo (mais ruidoso
-            # que o acaso), cancelando o sinal útil. Agora preserva o sinal do z-score:
-            # expit(-z) -> perto de 1.0 quando z é bem negativo (coerente),
-            #              perto de 0.0 quando z é bem positivo (ruidoso).
-            "structural_coherence": expit(-excess_structure)
+            "curvature": curvature,
+            "structural_coherence": structural_coherence,
+            "is_coherent": bool(np.mean(structural_coherence) > 0.5),
         }
-
+        
