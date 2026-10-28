@@ -8,31 +8,41 @@ class TrajectoryMotionTensor:
     def __init__(self, scanner=None):
         self.scanner = scanner
 
-    def compute_coherence(self, trajectory_matrix):
-        """
-        Calcula a coerência escalar de transição e o perfil instantâneo.
-        """
+    def compute_coherence(self, trajectory_matrix, step_lag=1):
         matriz = np.asarray(trajectory_matrix, dtype=np.float64)
         if matriz.ndim != 2:
             raise ValueError("A matriz de trajetória precisa ter 2 dimensões (N_passos, Dimensão).")
             
-        x0 = matriz[:-1]
-        x1 = matriz[1:]
+        if matriz.shape[0] <= step_lag:
+            return {
+                "global_coherence": 0.0,
+                "instantaneous_profile": np.array([]),
+                "drift_instability": np.array([]),
+                "is_structured": False
+            }
+
+        x0 = matriz[:-step_lag]
+        x1 = matriz[step_lag:]
         
-        # Produto escalar (alinhamento direcional entre passos adjacentes)
+        # Produto escalar normalizado
         dot_products = np.sum(x0 * x1, axis=1)
-        normas = np.linalg.norm(x0, axis=1) * np.linalg.norm(x1, axis=1) + 1e-12
+        normas = np.linalg.norm(x0, axis=1) * np.linalg.norm(x1, axis=1)
         
-        # Coerência angular instantânea passo a passo
-        instantaneous_coherence = dot_products / normas
+        # Evita divisão por zero/valores insignificantes
+        valid_mask = normas > 1e-8
+        instantaneous_coherence = np.ones(len(dot_products))
+        instantaneous_coherence[valid_mask] = dot_products[valid_mask] / normas[valid_mask]
         
-        # Instabilidade residual (desvio da trajetória contínua)
+        # Garante intervalo [-1.0, 1.0]
+        instantaneous_coherence = np.clip(instantaneous_coherence, -1.0, 1.0)
         drift_instability = 1.0 - instantaneous_coherence
         
+        global_coherence = float(np.median(instantaneous_coherence)) # Uso de mediana para robustez a outliers
+        
         return {
-            "global_coherence": float(np.mean(instantaneous_coherence)),
+            "global_coherence": global_coherence,
             "instantaneous_profile": instantaneous_coherence,
             "drift_instability": drift_instability,
-            "is_structured": bool(np.mean(instantaneous_coherence) > 0.5)
+            "is_structured": bool(global_coherence > 0.3) # Limiar adaptativo
         }
-      
+        
