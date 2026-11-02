@@ -1,55 +1,58 @@
-# HighDimensionsMap (HDM)
+# High Dimensions Map (HDM) 📐
 
-Biblioteca Python experimental para gerar dados sintéticos, projetar vetores em um espaço de menor dimensão, consultar vizinhos próximos e calcular métricas descritivas de trajetórias.
+<p align="center">
+  <b>PT:</b> Pesquisa e prototipagem de projeção ortogonal analítica usando DCT-II.<br>
+  <b>EN:</b> Research and prototyping of analytical orthogonal projection using DCT-II.
+</p>
 
-> **Nota científica:** assinaturas, coerência estrutural e métricas de ruído são medidas numéricas exploratórias. Elas não demonstram, por si só, que uma estrutura real foi descoberta nem que uma anomalia tem significado causal.
+<p align="center">
+  <img src="https://img.shields.io/badge/Status-Experimental-orange?style=flat-square" alt="Status">
+  <img src="https://img.shields.io/badge/Python-3.9+-blue?style=flat-square" alt="Python">
+  <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
+</p>
 
-## Instalação
+---
 
-A partir do repositório:
+## 🇧🇷 Português
+
+### Visão Geral
+O **HDM (High Dimensions Map)** é um projeto experimental focado na redução e mapeamento de vetores em espaços de alta dimensão. Em vez de utilizar abordagens estatísticas ou treinamentos iterativos, o HDM explora a **Transformada Discreta de Cosseno Tipo II (DCT-II)** para realizar projeções ortogonais determinísticas.
+
+> **Status Atual:** Protótipo em fase de testes conceituais e benchmarking de reconstrução. O pacote ainda **não** está publicado no PyPI.
+
+### Como Funciona (Conceito)
+1. **Entrada:** Vetores densos de alta dimensão (ex: $N$ dimensões).
+2. **Transformação:** Aplicação analítica da DCT-II para reorganizar a energia dos coeficientes.
+3. **Projeção:** Retenção das $K$ componentes principais ($K < N$).
+
+### Objetivo de Pesquisa
+Avaliar os limites práticos de preservação de distância e erro de reconstrução (RMSE) em comparações diretas contra métodos tradicionais como PCA e SVD.
+
+---
+
+## 🇬🇧 English
+
+### Overview
+**HDM (High Dimensions Map)** is an experimental project focused on vector reduction and mapping in high-dimensional spaces. Rather than relying on statistical approaches or iterative training, HDM explores the **Discrete Cosine Transform Type II (DCT-II)** to perform deterministic orthogonal projections.
+
+> **Current Status:** Prototype phase undergoing conceptual testing and reconstruction benchmarking. This package is **not** yet published on PyPI.
+
+### How It Works (Concept)
+1. **Input:** High-dimensional dense vectors (e.g., $N$ dimensions).
+2. **Transformation:** Analytical application of DCT-II to concentrate coefficient energy.
+3. **Projection:** Retention of the top $K$ components ($K < N$).
+
+### Research Goal
+Evaluate the practical limits of distance preservation and reconstruction error (RMSE) in direct benchmarks against traditional methods like PCA and SVD.
+
+---
+
+## ⚙️ Uso Local / Local Usage
 
 ```bash
-pip install -e ".[test]"
-```
+# Clonar o repositório / Clone the repository
+git clone [https://github.com/reinhardtmarta/hdm.git](https://github.com/reinhardtmarta/hdm.git)
+cd hdm
 
-Instalação a partir do GitHub:
-
-```bash
-pip install git+https://github.com/reinhardtmarta/hdm.git
-```
-
-## Exemplo rápido
-
-```python
-from highdimensionsmap import HDMScanner, MotionNoiseTracker
-
-scanner = HDMScanner(input_dim=128, latent_modes=32, seed=42)
-dataset = scanner.generate_dataset(n_samples=20, noise=0.05, drift=0.1)
-signatures = scanner.transform(dataset)
-
-indices, distances = scanner.query(signatures, dataset[0], k=3)
-print("Vizinhos:", indices)
-print("Distâncias:", distances)
-
-tracker = MotionNoiseTracker(scanner)
-metrics = tracker.track(dataset)
-print("Formato das assinaturas:", metrics["signatures"].shape)
-print("Velocidade:", metrics["velocity"][:5])
-print("Resíduo da suavização:", metrics["noise"][:5])
-```
-
-## Testes
-
-```bash
-python -m pytest -q
-```
-
-Os testes cobrem a API básica, geração de dados reproduzíveis, consulta de vizinhos, rastreamento e alguns casos-limite. Ainda são necessários testes científicos mais amplos com dados sintéticos controlados e dados reais apropriados.
-
-## API opcional
-
-```bash
-uvicorn highdimensionsmap.api:app --reload
-```
-
-Por padrão, o Uvicorn fica acessível localmente. Não exponha a API à rede pública sem autenticação, limites de entrada e configuração de segurança adequados.
+# Instalar dependências locais / Install local dependencies
+pip install -r requirements.txt
