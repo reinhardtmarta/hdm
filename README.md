@@ -8,7 +8,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Status-Experimental-orange?style=flat-square" alt="Status">
   <img src="https://img.shields.io/badge/Python-3.9+-blue?style=flat-square" alt="Python">
-  <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
+  <img src="https://img.shields.io/badge/License-APACHE-green?style=flat-square" alt="License">
 </p>
 
 ---
