@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from highdimensionmap import HDMCompressor
+from highdimensionsmap import HDMCompressor
 
 # Importações opcionais tratadas com pytest.importorskip
 pd = pytest.importorskip("pandas", reason="Pandas nao instalado no ambiente")
