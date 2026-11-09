@@ -123,4 +123,80 @@ class HDMCompressor:
             return X_reconstructed.squeeze(0), k_per_row[0], exec_time_ms
 
         return X_reconstructed, k_per_row, exec_time_ms
+
+    def compress(
+        self, X: Union[np.ndarray, "pd.DataFrame", "pd.Series", "torch.Tensor"]
+    ) -> dict:
+        """Comprime a matriz/vetor retornando apenas os K coeficientes relevantes e seus indices.
+
+        Retorna:
+            dict: {
+                'values': list de np.ndarray (coeficientes mantidos por linha),
+                'indices': list de np.ndarray (indices originais dos coeficientes),
+                'shape': tuple (formato original da matriz/vetor),
+                'is_1d': bool
+            }
+        """
+        X_np, _ = self._convert_input(X)
+        is_1d = X_np.ndim == 1
+        if is_1d:
+            X_np = X_np.reshape(1, -1)
+
+        if not np.isfinite(X_np).all():
+            raise ValueError("A matriz de entrada contem valores invalidos (NaN ou Inf).")
+
+        # 1. DCT-II e ordenacao por magnitude
+        coefs = dct(X_np, type=2, norm="ortho", axis=1)
+        abs_coefs = np.abs(coefs)
+        sorted_indices = np.argsort(-abs_coefs, axis=1)
+
+        rows = np.arange(X_np.shape[0])[:, None]
+        sorted_sq_coefs = coefs[rows, sorted_indices] ** 2
+
+        # 2. Determinar K por linha com protecao para vetores nulos
+        total_energy = np.sum(coefs**2, axis=1, keepdims=True)
+        null_mask = total_energy.squeeze(axis=1) == 0.0
+        safe_total = np.where(total_energy == 0.0, 1.0, total_energy)
+        cum_energy = np.cumsum(sorted_sq_coefs, axis=1) / safe_total
+
+        mask_energy = cum_energy >= self.target_energy
+        k_per_row = np.argmax(mask_energy, axis=1) + 1
+        k_per_row[~np.any(mask_energy, axis=1)] = X_np.shape[1]
+        k_per_row[null_mask] = 1
+
+        # 3. Extrair apenas os K coeficientes e indices por linha
+        compressed_values = []
+        compressed_indices = []
+
+        for i in range(X_np.shape[0]):
+            k = k_per_row[i]
+            idx = sorted_indices[i, :k]
+            val = coefs[i, idx]
+            compressed_indices.append(idx.astype(np.int32))
+            compressed_values.append(val.astype(np.float32))
+
+        return {
+            "values": compressed_values,
+            "indices": compressed_indices,
+            "shape": X_np.shape,
+            "is_1d": is_1d,
+        }
+
+    def decompress(self, compressed_data: dict) -> np.ndarray:
+        """Reconstrui a matriz/vetor original a partir do dicionario comprimido."""
+        values = compressed_data["values"]
+        indices = compressed_data["indices"]
+        shape = compressed_data["shape"]
+        is_1d = compressed_data["is_1d"]
+
+        coefs = np.zeros(shape, dtype=np.float32)
+
+        for i in range(shape[0]):
+            coefs[i, indices[i]] = values[i]
+
+        X_reconstructed = idct(coefs, type=2, norm="ortho", axis=1)
+
+        if is_1d:
+            return X_reconstructed.squeeze(0)
+        return X_reconstructed
         
