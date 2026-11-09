@@ -1,3 +1,4 @@
+import time
 import numpy as np
 from scipy.fftpack import dct, idct
 
@@ -23,6 +24,8 @@ class HDMCompressor:
         Retorna:
             tuple: (X_reconstruido, k_por_linha, tempo_execucao_ms)
         """
+        t0 = time.perf_counter()
+
         # Garante suporte a vetores 1D convertendo temporariamente para 2D
         is_1d = X.ndim == 1
         if is_1d:
@@ -69,8 +72,11 @@ class HDMCompressor:
         # 9. Reconstrução via IDCT-II
         X_reconstructed = idct(filtered_coefs, type=2, norm="ortho", axis=1)
 
-        if is_1d:
-            return X_reconstructed.squeeze(0), k_per_row[0]
+        t1 = time.perf_counter()
+        exec_time_ms = (t1 - t0) * 1000.0
 
-        return X_reconstructed, k_per_row
-      
+        if is_1d:
+            return X_reconstructed.squeeze(0), k_per_row[0], exec_time_ms
+
+        return X_reconstructed, k_per_row, exec_time_ms
+        
