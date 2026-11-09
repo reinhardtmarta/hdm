@@ -88,6 +88,30 @@ def test_edge_case_inf_input():
         compressor.fit_transform(X_inf)
 
 
+def test_compress_and_decompress_cycle():
+    """Valida se a exportacao compacta (compress -> decompress) reduz dimensao e reconstrui a matriz."""
+    np.random.seed(42)
+    X = np.random.randn(10, 50)
+    compressor = HDMCompressor(target_energy=0.99)
+
+    # 1. Exportação compacta (dicionário esparso com coeficientes e índices)
+    compressed = compressor.compress(X)
+
+    # Asserções da estrutura comprimida
+    assert compressed["shape"] == (10, 50)
+    assert len(compressed["values"]) == 10
+    assert len(compressed["indices"]) == 10
+    # Garante redução real no número de coeficientes armazenados
+    assert len(compressed["values"][0]) < 50
+
+    # 2. Reconstrução a partir do dicionário compacto
+    X_rec = compressor.decompress(compressed)
+
+    assert X_rec.shape == X.shape
+    mse = np.mean((X - X_rec) ** 2)
+    assert mse < 0.1
+
+
 # =====================================================================
 # 2. TESTES OPCIONAIS (PANDAS & PYTORCH)
 # =====================================================================
