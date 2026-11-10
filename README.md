@@ -1,5 +1,6 @@
 
 # High Dimensions Map (HDM) 📐
+## pip install highdimensionsmap 
 
 <p align="center">
   <b>PT:</b> Biblioteca Python para projeção ortogonal analítica, redução dimensional e compressão adaptativa de vetores via DCT-II.<br>
