@@ -1,13 +1,15 @@
-from typing import List, Union
+from typing import List, Union, Optional, Dict, Any
 
 import numpy as np
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from .scanner import HDMScanner
+from .compressor import HDMCompressor
 
-app = FastAPI(title="HDM API", version="0.1.0")
-scanner = HDMScanner()
+app = FastAPI(title="HDM API", version="0.3.0")
+scanner = HDMScanner(max_dim=16384)
+compressor = HDMCompressor(max_dim=65536)
 
 
 class TransformRequest(BaseModel):
@@ -20,9 +22,20 @@ class QueryRequest(BaseModel):
     k: int = 5
 
 
+class CompressRequest(BaseModel):
+    input: Union[List[float], List[List[float]]]
+    target_energy: float = 0.999
+    output_dir: Optional[str] = None
+    verbose: bool = False
+
+
 @app.get("/health")
 def healthcheck():
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "scanner_max_dim": scanner.max_dim,
+        "compressor_max_dim": compressor.max_dim,
+    }
 
 
 @app.post("/transform")
@@ -36,7 +49,11 @@ def transform_endpoint(payload: TransformRequest):
         raise HTTPException(status_code=400, detail="'input' deve ser um vetor ou uma matriz 2D.")
 
     was_1d = values.ndim == 1
-    signature = scanner.transform(values)
+    try:
+        signature = scanner.transform(values)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     sig_array = np.asarray(signature, dtype=np.float64)
 
     # Garante que a estrutura dimensional da resposta corresponda à entrada
@@ -67,11 +84,46 @@ def query_endpoint(payload: QueryRequest):
     if payload.k > dataset.shape[0]:
         raise HTTPException(status_code=400, detail="'k' não pode ser maior que o tamanho do dataset.")
 
-    indices, distances = scanner.query(dataset, query, k=payload.k)
+    try:
+        indices, distances = scanner.query(dataset, query, k=payload.k)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     return {"indices": indices.tolist(), "distances": distances.tolist()}
+
+
+@app.post("/compress")
+def compress_endpoint(payload: CompressRequest) -> Dict[str, Any]:
+    try:
+        values = np.asarray(payload.input, dtype=np.float64)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="'input' precisa ser numérico.") from exc
+
+    try:
+        local_compressor = HDMCompressor(
+            target_energy=payload.target_energy,
+            max_dim=compressor.max_dim,
+        )
+        reconstructed, k_retained, exec_time_ms = local_compressor.fit_transform(
+            values,
+            output_dir=payload.output_dir,
+            verbose=payload.verbose,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    k_out = int(k_retained) if np.ndim(k_retained) == 0 else k_retained.tolist()
+
+    return {
+        "reconstructed": reconstructed.tolist(),
+        "k_retained": k_out,
+        "exec_time_ms": exec_time_ms,
+        "residual_report": local_compressor.last_residual_report,
+    }
 
 
 if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run("highdimensionsmap.api:app", host="0.0.0.0", port=8000, reload=True)
+    
